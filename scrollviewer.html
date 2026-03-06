@@ -69,19 +69,31 @@
         const ease = (t) => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
         
         async function load() {
-            for (let i = 0; i < TOTAL_FRAMES; i++) {
+            // Load first frame immediately to show something
+            const firstNum = String(START_FRAME).padStart(4, '0');
+            const firstUrl = `${IMAGE_DIR}/EarthlyMarkers002_03fusionrender${firstNum}.jpg`;
+            try {
+                const r = await fetch(firstUrl, { mode: 'cors' });
+                if (r.ok) {
+                    frames[0] = URL.createObjectURL(await r.blob());
+                    show(0);
+                }
+            } catch(e) {
+                console.error(`Frame ${firstNum} failed`);
+            }
+            
+            // Load remaining frames in background (no await, parallel)
+            for (let i = 1; i < TOTAL_FRAMES; i++) {
                 const num = String(START_FRAME + i).padStart(4, '0');
                 const url = `${IMAGE_DIR}/EarthlyMarkers002_03fusionrender${num}.jpg`;
                 
-                try {
-                    const r = await fetch(url, { mode: 'cors' });
-                    if (!r.ok) throw new Error();
-                    frames.push(URL.createObjectURL(await r.blob()));
-                } catch(e) {
-                    console.error(`Frame ${num} failed`);
-                }
+                fetch(url, { mode: 'cors' })
+                    .then(r => r.ok ? r.blob() : null)
+                    .then(blob => {
+                        if (blob) frames[i] = URL.createObjectURL(blob);
+                    })
+                    .catch(e => console.error(`Frame ${num} failed`));
             }
-            show(0);
         }
         
         function show(i) {
