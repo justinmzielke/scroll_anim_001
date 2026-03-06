@@ -5,12 +5,12 @@ from io import BytesIO
 # Open first frame
 img = Image.open('images_optimized/EarthlyMarkers002_03fusionrender0175.jpg')
 
-# Create low-quality version (very small, 10% size, quality 15)
-img_small = img.resize((int(img.width * 0.1), int(img.height * 0.1)), Image.Resampling.LANCZOS)
+# Create moderate-quality version (25% size, quality 35)
+img_small = img.resize((int(img.width * 0.25), int(img.height * 0.25)), Image.Resampling.LANCZOS)
 
-# Save as JPEG with very low quality
+# Save as JPEG with moderate quality
 buffer = BytesIO()
-img_small.save(buffer, format='JPEG', quality=15)
+img_small.save(buffer, format='JPEG', quality=35)
 buffer.seek(0)
 
 # Convert to base64
