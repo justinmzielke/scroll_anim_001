@@ -69,21 +69,26 @@
         const ease = (t) => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
         
         async function load() {
-            // Load first frame immediately to show something
-            const firstNum = String(START_FRAME).padStart(4, '0');
-            const firstUrl = `${IMAGE_DIR}/EarthlyMarkers002_03fusionrender${firstNum}.jpg`;
-            try {
-                const r = await fetch(firstUrl, { mode: 'cors' });
-                if (r.ok) {
-                    frames[0] = URL.createObjectURL(await r.blob());
-                    show(0);
+            // Load first 25 frames sequentially so they're ready immediately
+            for (let i = 0; i < 25 && i < TOTAL_FRAMES; i++) {
+                const num = String(START_FRAME + i).padStart(4, '0');
+                const url = `${IMAGE_DIR}/EarthlyMarkers002_03fusionrender${num}.jpg`;
+                
+                try {
+                    const r = await fetch(url, { mode: 'cors' });
+                    if (r.ok) {
+                        frames[i] = URL.createObjectURL(await r.blob());
+                    }
+                } catch(e) {
+                    console.error(`Frame ${num} failed`);
                 }
-            } catch(e) {
-                console.error(`Frame ${firstNum} failed`);
             }
             
+            // Show first frame immediately
+            show(0);
+            
             // Load remaining frames in background (no await, parallel)
-            for (let i = 1; i < TOTAL_FRAMES; i++) {
+            for (let i = 25; i < TOTAL_FRAMES; i++) {
                 const num = String(START_FRAME + i).padStart(4, '0');
                 const url = `${IMAGE_DIR}/EarthlyMarkers002_03fusionrender${num}.jpg`;
                 
