@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background: #000; color: #fff; font-family: monospace; padding: 20px; }
+        img { max-width: 100%; max-height: 500px; margin: 20px 0; border: 1px solid #fff; }
+    </style>
+</head>
+<body>
+    <h1>Image Loading Test</h1>
+    <p>Testing if images can be loaded...</p>
+    
+    <h2>Test 1: Direct file in images_optimized/</h2>
+    <img src="images_optimized/EarthlyMarkers002_03fusionrender0175.jpg" alt="Test">
+    <p id="test1">Loading...</p>
+    
+    <h2>Console Output:</h2>
+    <pre id="console"></pre>
+    
+    <script>
+        const log = (msg) => {
+            const el = document.getElementById('console');
+            el.textContent += msg + '\n';
+            console.log(msg);
+        };
+        
+        log('Page loaded');
+        log('Current URL: ' + window.location.href);
+        log('Testing fetch...');
+        
+        // Test 1: Fetch
+        fetch('images_optimized/EarthlyMarkers002_03fusionrender0175.jpg')
+            .then(r => {
+                log('✓ Fetch successful: ' + r.status);
+                return r.blob();
+            })
+            .then(blob => {
+                log('✓ Got blob: ' + blob.size + ' bytes');
+                const url = URL.createObjectURL(blob);
+                log('✓ Created object URL');
+            })
+            .catch(e => {
+                log('✗ Fetch failed: ' + e.message);
+            });
+        
+        // Test 2: Direct image tag
+        const img = new Image();
+        img.onload = () => log('✓ Image tag loaded');
+        img.onerror = () => log('✗ Image tag failed');
+        img.src = 'images_optimized/EarthlyMarkers002_03fusionrender0175.jpg';
+    </script>
+</body>
+</html>

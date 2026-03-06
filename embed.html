@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scroll Animation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { 
+            width: 1080px; 
+            height: 1920px; 
+            overflow: hidden;
+        }
+        body {
+            background: transparent;
+            scrollbar-width: none;
+        }
+        body::-webkit-scrollbar {
+            display: none;
+        }
+        .scroll-container { 
+            height: 500vh; 
+            width: 1080px;
+        }
+        .viewer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 1080px;
+            height: 1920px;
+            z-index: 10;
+            overflow: hidden;
+        }
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="scroll-container"></div>
+    <div class="viewer">
+        <img id="frame">
+    </div>
+
+    <script>
+        const IMAGE_DIR = 'images_optimized';
+        const START_FRAME = 175;
+        const TOTAL_FRAMES = 100;
+        
+        let frames = [];
+        let current = -1;
+        let displayFrame = 0;
+        let velocity = 0;
+        let prevScrollPos = 0;
+        let prevTime = Date.now();
+        let animating = false;
+        let scrollTimeout;
+        let isActuallyScrolling = false;
+        
+        const ease = (t) => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+        
+        async function load() {
+            for (let i = 0; i < TOTAL_FRAMES; i++) {
+                const num = String(START_FRAME + i).padStart(4, '0');
+                const url = `${IMAGE_DIR}/EarthlyMarkers002_03fusionrender${num}.jpg`;
+                
+                try {
+                    const r = await fetch(url);
+                    if (!r.ok) throw new Error();
+                    frames.push(URL.createObjectURL(await r.blob()));
+                } catch(e) {
+                    console.error(`Frame ${num} failed`);
+                }
+            }
+            show(0);
+        }
+        
+        function show(i) {
+            i = Math.max(0, Math.min(Math.round(i), TOTAL_FRAMES - 1));
+            if (i === current || !frames[i]) return;
+            document.getElementById('frame').src = frames[i];
+            current = i;
+        }
+        
+        function getScrollFrame() {
+            const h = document.documentElement.scrollHeight - window.innerHeight;
+            const p = Math.min(window.scrollY / h, 1);
+            return ease(p) * (TOTAL_FRAMES - 1);
+        }
+        
+        let lastFrameTime = 0;
+        const FRAME_INTERVAL = 1000 / 12; // 12fps max playback speed
+        let scrollAccumulator = 0;
+        let lastScrollEvent = 0;
+        let lastScrollY = 0;
+        
+        function animate() {
+            const now = Date.now();
+            
+            // Only update display at 12fps max
+            if (now - lastFrameTime >= FRAME_INTERVAL) {
+                // Only apply velocity when NOT actively scrolling
+                if (!isActuallyScrolling) {
+                    displayFrame += velocity;
+                    displayFrame = Math.max(0, Math.min(displayFrame, TOTAL_FRAMES - 1));
+                    show(displayFrame);
+                    
+                    // Decay velocity
+                    velocity *= 0.85;
+                    
+                    lastFrameTime = now;
+                }
+            }
+            
+            // Continue animation if there's velocity
+            if (!isActuallyScrolling && Math.abs(velocity) > 0.001) {
+                requestAnimationFrame(animate);
+            } else if (isActuallyScrolling) {
+                requestAnimationFrame(animate);
+            } else {
+                animating = false;
+                velocity = 0;
+            }
+        }
+        
+        window.addEventListener('scroll', () => {
+            if (!frames.length) return;
+            
+            const now = Date.now();
+            
+            // Only process scroll at 12fps for consistent playback
+            if (now - lastFrameTime < FRAME_INTERVAL) return;
+            
+            // Calculate ONLY the new scroll movement since last scroll event
+            const scrollPos = window.scrollY;
+            const scrollDelta = scrollPos - lastScrollY;
+            lastScrollY = scrollPos;
+            
+            const h = document.documentElement.scrollHeight - window.innerHeight;
+            const framesDelta = (scrollDelta / h) * (TOTAL_FRAMES - 1);
+            
+            // Only add velocity if there's actual new scroll movement
+            if (Math.abs(framesDelta) > 0.01) {
+                scrollAccumulator += framesDelta;
+                
+                // Reset accumulator if enough time passed since last scroll
+                if (now - lastScrollEvent > 150) {
+                    scrollAccumulator = framesDelta;
+                }
+                
+                // Set velocity from new scroll movement only
+                velocity = scrollAccumulator * 0.6;
+            }
+            
+            // Advance display frame by velocity
+            displayFrame += velocity;
+            displayFrame = Math.max(0, Math.min(displayFrame, TOTAL_FRAMES - 1));
+            show(displayFrame);
+            
+            prevTime = now;
+            lastScrollEvent = now;
+            lastFrameTime = now;
+            
+            // Mark that we're actively scrolling
+            isActuallyScrolling = true;
+            clearTimeout(scrollTimeout);
+            
+            // Start animation loop if not running
+            if (!animating) {
+                animating = true;
+                requestAnimationFrame(animate);
+            }
+            
+            // When scroll stops, allow momentum
+            scrollTimeout = setTimeout(() => {
+                isActuallyScrolling = false;
+                scrollAccumulator = 0;
+            }, 50);
+            
+        }, { passive: true });
+        
+        load();
+    </script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scroll Animation Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            font-family: system-ui;
+            overflow-x: hidden;
+        }
+        
+        .scroll-container {
+            height: 500vh;
+            background: linear-gradient(180deg, #000 0%, #1a1a1a 100%);
+        }
+        
+        .viewer-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        
+        .viewer {
+            width: 90%;
+            height: 90%;
+            background: #111;
+            border-radius: 8px;
+            border: 1px solid #333;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+        }
+        
+        #frameImage {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 13px;
+            z-index: 20;
+        }
+        
+        .status {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 20;
+        }
+        
+        .info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="scroll-container"></div>
+    
+    <div class="viewer-wrapper">
+        <div class="viewer">
+            <img id="frameImage">
+            <div class="status">
+                <span id="status">Loading...</span>
+            </div>
+            <div class="controls">
+                <span id="frameCounter">0/100</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="info">Scroll to animate</div>
+
+    <script>
+        const IMAGE_DIR = 'images_optimized';
+        const START_FRAME = 175;
+        const TOTAL_FRAMES = 100;
+        
+        let frames = [];
+        let currentIndex = -1;
+        
+        // Easing
+        const ease = (t) => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+        
+        // Load all frames
+        async function loadFrames() {
+            const status = document.getElementById('status');
+            console.log('Loading', TOTAL_FRAMES, 'frames...');
+            
+            for (let i = 0; i < TOTAL_FRAMES; i++) {
+                const frameNum = String(START_FRAME + i).padStart(4, '0');
+                const filename = `EarthlyMarkers002_03fusionrender${frameNum}.jpg`;
+                const url = `${IMAGE_DIR}/${filename}`;
+                
+                try {
+                    const resp = await fetch(url);
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                    const blob = await resp.blob();
+                    const objUrl = URL.createObjectURL(blob);
+                    frames.push(objUrl);
+                    
+                    if (i % 20 === 0) {
+                        status.textContent = `Loaded ${i}/${TOTAL_FRAMES}`;
+                    }
+                } catch(e) {
+                    console.error(`Failed frame ${frameNum}:`, e);
+                    status.textContent = `Error loading frame ${i}`;
+                }
+            }
+            
+            status.textContent = `Ready (${frames.length}/${TOTAL_FRAMES})`;
+            console.log('✓ Loaded', frames.length, 'frames');
+            showFrame(0);
+        }
+        
+        // Show frame
+        function showFrame(index) {
+            if (index < 0 || index >= frames.length) return;
+            if (index === currentIndex) return;
+            
+            document.getElementById('frameImage').src = frames[index];
+            document.getElementById('frameCounter').textContent = (index+1) + '/' + TOTAL_FRAMES;
+            currentIndex = index;
+        }
+        
+        // Scroll handler
+        window.addEventListener('scroll', () => {
+            if (frames.length === 0) return;
+            
+            const scrollH = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = Math.min(window.scrollY / scrollH, 1);
+            const eased = ease(progress);
+            const index = Math.round(eased * (TOTAL_FRAMES - 1));
+            
+            showFrame(index);
+        }, { passive: true });
+        
+        // Start
+        loadFrames();
+    </script>
+</body>
+</html>
